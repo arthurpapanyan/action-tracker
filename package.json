@@ -1,0 +1,30 @@
+{
+  "name": "action-tracker",
+  "version": "1.0.0",
+  "description": "Service for tracking different actions happening on behalf of the user behavior. It stores information in Elasticsearch for later use.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiko-star/action-tracker.git"
+  },
+  "keywords": [
+    "nodejs",
+    "elasticsearch",
+    "kafka"
+  ],
+  "author": "Tigran Mesropyan <tikodeveloper@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tiko-star/action-tracker/issues"
+  },
+  "homepage": "https://github.com/tiko-star/action-tracker#readme",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "joi": "^17.6.0",
+    "kafkajs": "^1.16.0",
+    "kafkajs-snappy": "^1.1.0"
+  }
+}
