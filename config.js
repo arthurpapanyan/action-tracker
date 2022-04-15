@@ -11,6 +11,7 @@ const {
     KAFKA_PASSWORD,
     KAFKA_CONSUMER_GROUP_ID,
     KAFKA_CONSUME_TOPIC,
+    KAFKA_PRODUCE_NOTIFICATION_TOPIC,
 } = process.env;
 
 const kafka = {
@@ -30,12 +31,18 @@ const consumer = {
     allowAutoTopicCreation: false,
 };
 
+const producer = {
+    allowAutoTopicCreation: false,
+};
+
 const app = {
     sourceTopic: KAFKA_CONSUME_TOPIC,
+    sinkNotificationTopic: KAFKA_PRODUCE_NOTIFICATION_TOPIC,
 };
 
 module.exports = {
     kafka,
     consumer,
+    producer,
     app,
 };
