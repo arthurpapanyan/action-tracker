@@ -5,6 +5,7 @@ const config = require("./config.js");
 const { Kafka, CompressionTypes, CompressionCodecs } = require("kafkajs");
 const SnappyCodec = require("kafkajs-snappy");
 const EventEmitter = require("events");
+const { Client } = require('@elastic/elasticsearch');
 const { validateConsumedRecord } = require("./utils/Validator");
 
 const onConsumed = require("./handlers/onConsumed.js");
@@ -17,8 +18,9 @@ const producer = kafka.producer(config.producer);
 const consumer = kafka.consumer(config.consumer);
 
 const emitter = new EventEmitter();
+const elastic = new Client(config.elasticsearch);
 
-emitter.on("consumed", onConsumed(emitter));
+emitter.on("consumed", onConsumed(emitter, elastic));
 emitter.on("error", (err) => {
     console.error(err);
 });
@@ -67,6 +69,7 @@ errorTypes.forEach((type) => {
         try {
             console.log(`process.on ${type}`);
             console.error(e);
+            await elastic.close();
             await producer.disconnect();
             await consumer.disconnect();
             process.exit(0);
@@ -79,6 +82,7 @@ errorTypes.forEach((type) => {
 signalTraps.forEach((type) => {
     process.once(type, async () => {
         try {
+            await elastic.close();
             await producer.disconnect();
             await consumer.disconnect();
         } finally {

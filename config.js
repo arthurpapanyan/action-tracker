@@ -1,5 +1,6 @@
 "use strict";
 
+const fs = require("fs");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -12,6 +13,12 @@ const {
     KAFKA_CONSUMER_GROUP_ID,
     KAFKA_CONSUME_TOPIC,
     KAFKA_PRODUCE_NOTIFICATION_TOPIC,
+
+    ELASTICSEARCH_AUTH_STRATEGY,
+    ELASTICSEARCH_NODE,
+    ELASTICSEARCH_USERNAME,
+    ELASTICSEARCH_PASSWORD,
+    ELASTICSEARCH_CA_CERTIFICATE_PATH,
 } = process.env;
 
 const kafka = {
@@ -40,9 +47,30 @@ const app = {
     sinkNotificationTopic: KAFKA_PRODUCE_NOTIFICATION_TOPIC,
 };
 
+const elasticsearch = {
+    suggestCompression: true,
+    compression: "gzip",
+    name: "action-tracker",
+};
+
+if (ELASTICSEARCH_AUTH_STRATEGY === 'basic') {
+    Object.assign(elasticsearch, {
+        node: ELASTICSEARCH_NODE,
+        auth: {
+            username: ELASTICSEARCH_USERNAME,
+            password: ELASTICSEARCH_PASSWORD
+        },
+        tls: {
+            ca: fs.readFileSync(ELASTICSEARCH_CA_CERTIFICATE_PATH),
+            rejectUnauthorized: false
+        }
+    });
+}
+
 module.exports = {
     kafka,
     consumer,
     producer,
     app,
+    elasticsearch,
 };
