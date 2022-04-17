@@ -1,6 +1,6 @@
 "use strict";
 
-const config = require("../config.js");
+const config = require("../../config.js");
 
 module.exports = function (producer) {
     return async (key, record) => {
