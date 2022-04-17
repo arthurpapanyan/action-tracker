@@ -7,9 +7,7 @@ const SnappyCodec = require("kafkajs-snappy");
 const EventEmitter = require("events");
 const { Client } = require('@elastic/elasticsearch');
 const { validateConsumedRecord } = require("./utils/Validator");
-
-const onConsumed = require("./handlers/onConsumed.js");
-const onNotify = require("./handlers/onNotify.js");
+const { onConsumed, onNotify, onError } = require("./handlers/stack");
 
 // Initialize kafka instance and enable snappy compression.
 const kafka = new Kafka(config.kafka);
@@ -21,9 +19,7 @@ const emitter = new EventEmitter();
 const elastic = new Client(config.elasticsearch);
 
 emitter.on("consumed", onConsumed(emitter, elastic));
-emitter.on("error", (err) => {
-    console.error(err);
-});
+emitter.on("error", onError());
 
 /**
  * Main function for starting the application.
