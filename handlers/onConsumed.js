@@ -1,5 +1,6 @@
 "use strict";
 
+// List of notifiable rooms.
 const notifiables = [
     "activity"
 ];
@@ -26,6 +27,10 @@ module.exports = function (emitter, client) {
         // Store data into Elasticsearch...
         const { index, document } = record;
 
-        await client.index({ index, document });
+        try {
+            await client.index({ index, document });
+        } catch (e) {
+            emitter.emit("error", e);
+        }
     };
 }
