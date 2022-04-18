@@ -19,6 +19,8 @@ const {
     ELASTICSEARCH_USERNAME,
     ELASTICSEARCH_PASSWORD,
     ELASTICSEARCH_CA_CERTIFICATE_PATH,
+    ELASTICSEARCH_CLOUD_ID,
+    ELASTICSEARCH_API_KEY,
 } = process.env;
 
 const kafka = {
@@ -53,7 +55,7 @@ const elasticsearch = {
     name: "action-tracker",
 };
 
-if (ELASTICSEARCH_AUTH_STRATEGY === 'basic') {
+if (ELASTICSEARCH_AUTH_STRATEGY === "basic") {
     Object.assign(elasticsearch, {
         node: ELASTICSEARCH_NODE,
         auth: {
@@ -64,6 +66,15 @@ if (ELASTICSEARCH_AUTH_STRATEGY === 'basic') {
             ca: fs.readFileSync(ELASTICSEARCH_CA_CERTIFICATE_PATH),
             rejectUnauthorized: false
         }
+    });
+} else if (ELASTICSEARCH_AUTH_STRATEGY === "cloud") {
+    Object.assign(elasticsearch, {
+        cloud: {
+            id: ELASTICSEARCH_CLOUD_ID
+        },
+        auth: {
+            apiKey: ELASTICSEARCH_API_KEY
+        },
     });
 }
 
