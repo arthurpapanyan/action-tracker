@@ -2,18 +2,11 @@
 
 const config = require("./config.js");
 
-const { Kafka, CompressionTypes, CompressionCodecs } = require("kafkajs");
-const SnappyCodec = require("kafkajs-snappy");
+const { createProducer, createConsumer } = require("./services/kafka");
 const EventEmitter = require("events");
 const { Client } = require('@elastic/elasticsearch');
-const { validateConsumedRecord } = require("./utils/Validator");
+const { logger: log, validator, graceful } = require("./utils");
 const { onConsumed, onNotify, onError } = require("./handlers/stack");
-
-// Initialize kafka instance and enable snappy compression.
-const kafka = new Kafka(config.kafka);
-CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
-const producer = kafka.producer(config.producer);
-const consumer = kafka.consumer(config.consumer);
 
 const emitter = new EventEmitter();
 const elastic = new Client(config.elasticsearch);
@@ -21,35 +14,54 @@ const elastic = new Client(config.elasticsearch);
 emitter.on("consumed", onConsumed(emitter, elastic));
 emitter.on("error", onError());
 
+const logger = log.createLogger();
+
 /**
  * Main function for starting the application.
  */
 async function run() {
+    // Initialize kafka producer and consumer instances.
+    const producer = await createProducer(config.producer);
+    const consumer = await createConsumer(config.consumer);
     const {
         app: { sourceTopic: topic },
     } = config;
 
-    await producer.connect();
-    await consumer.connect();
-    await consumer.subscribe({ topic, fromBeginning: true });
-
     emitter.on("notify", onNotify(producer));
 
-    await consumer.run({
-        partitionsConsumedConcurrently: 3,
-        eachMessage: ({ topic, partition, message, heartbeat }) => {
-            try {
-                const { key, value } = message;
-                const records = validateConsumedRecord(JSON.parse(value.toString()));
+    consumer.subscribe([topic]);
+    consumer.consume((err, message) => {
+        if (err) {
+            emitter.emit("error", err);
+            return;
+        }
 
-                records.forEach((record) => {
-                    emitter.emit("consumed", key.toString(), record);
-                });
-            } catch (err) {
-                emitter.emit("error", err);
-            }
-        },
+        try {
+            const { key, value } = message;
+            const records = validator.validateConsumedRecord(JSON.parse(value.toString()));
+            records.forEach((record) => {
+                emitter.emit("consumed", key.toString(), record);
+            });
+        } catch (err) {
+            emitter.emit("error", err);
+        }
     });
+
+    /**
+     * Graceful shutdown handler for producer and consumer.
+     */
+    function shutdown() {
+        consumer.disconnect(() => {
+            logger.info("Consumer disconnected.");
+            producer.disconnect(10000, () => {
+                logger.info("Producer disconnected.");
+                process.exit(0);
+            });
+        });
+    }
+
+    graceful.errorShutdown(shutdown);
+    graceful.signalShutdown(shutdown);
 }
 
 run().catch((e) => {
@@ -57,32 +69,22 @@ run().catch((e) => {
 });
 
 // Enable graceful shutdown.
-const errorTypes = ["unhandledRejection", "uncaughtException"];
-const signalTraps = ["SIGTERM", "SIGINT", "SIGUSR2"];
-
-errorTypes.forEach((type) => {
-    process.on(type, async (e) => {
-        try {
-            console.log(`process.on ${type}`);
-            console.error(e);
-            await elastic.close();
-            await producer.disconnect();
-            await consumer.disconnect();
-            process.exit(0);
-        } catch {
-            process.exit(1);
-        }
-    });
+graceful.errorShutdown(async (e) => {
+    try {
+        logger.info("Closing enasticsearch connection,,,");
+        logger.error(e);
+        await elastic.close();
+    } catch {
+        process.exit(1);
+    }
 });
 
-signalTraps.forEach((type) => {
-    process.once(type, async () => {
-        try {
-            await elastic.close();
-            await producer.disconnect();
-            await consumer.disconnect();
-        } finally {
-            process.kill(process.pid, type);
-        }
-    });
+graceful.signalShutdown(async (signal) => {
+    logger.info("Closing enasticsearch connection.");
+
+    try {
+        await elastic.close();
+    } catch {
+        process.kill(process.pid, signal);
+    }
 });

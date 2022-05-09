@@ -1,5 +1,7 @@
 "use strict";
 
+const { logger: log } = require("../../utils");
+
 /**
  * Return event handler for emitted "error" events.
  *
@@ -8,7 +10,9 @@
  * @returns {function} Event handler.
  */
 module.exports = function () {
+    const logger = log.createLogger();
+
     return (err) => {
-        console.error("There was an error:", err);
+        logger.error("There was an error:", err);
     };
 };

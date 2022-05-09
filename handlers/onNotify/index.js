@@ -11,22 +11,15 @@ module.exports = function (producer) {
         } = config;
 
         const { document } = record;
+        const value = JSON.stringify({
+            project: key,
+            room: "activity",
+            notification: {
+                type: "activity-record",
+                document,
+            },
+        })
 
-        await producer.send({
-            topic,
-            messages: [
-                {
-                    key,
-                    value: JSON.stringify({
-                        project: key,
-                        room: "activity",
-                        notification: {
-                            type: "activity-record",
-                            document,
-                        },
-                    }),
-                }
-            ],
-        });
+        producer.produce(topic, -1, Buffer.from(value), key);
     };
 }

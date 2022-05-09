@@ -2,7 +2,7 @@
 
 // List of notifiable rooms.
 const notifiables = [
-    "activity"
+    "activity",
 ];
 
 /**
