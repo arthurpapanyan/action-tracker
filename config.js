@@ -36,6 +36,7 @@ const consumer = {
     "socket.keepalive.enable": true,
     "session.timeout.ms": 60000,
     "group.instance.id": crypto.randomBytes(20).toString('hex'),
+    "enable.auto.commit": false,
 };
 
 const producer = {

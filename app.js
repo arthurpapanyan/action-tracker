@@ -11,7 +11,6 @@ const { onConsumed, onNotify, onError } = require("./handlers/stack");
 const emitter = new EventEmitter();
 const elastic = new Client(config.elasticsearch);
 
-emitter.on("consumed", onConsumed(emitter, elastic));
 emitter.on("error", onError());
 
 const logger = log.createLogger();
@@ -27,6 +26,7 @@ async function run() {
         app: { sourceTopic: topic },
     } = config;
 
+    emitter.on("consumed", onConsumed(emitter, elastic, consumer));
     emitter.on("notify", onNotify(producer));
 
     consumer.subscribe([topic]);
@@ -37,11 +37,10 @@ async function run() {
         }
 
         try {
-            const { key, value } = message;
+            const { key, value, topic, offset, partition } = message;
             const records = validator.validateConsumedRecord(JSON.parse(value.toString()));
-            records.forEach((record) => {
-                emitter.emit("consumed", key.toString(), record);
-            });
+
+            emitter.emit("consumed", key.toString(), records, { topic, offset, partition });
         } catch (err) {
             emitter.emit("error", err);
         }
@@ -68,10 +67,10 @@ run().catch((e) => {
     console.error(`[action-tracker-app/consumer] ${e.message}`, e);
 });
 
-// Enable graceful shutdown.
+// Enable graceful shutdown on errors.
 graceful.errorShutdown(async (e) => {
     try {
-        logger.info("Closing enasticsearch connection,,,");
+        logger.info("Closing enasticsearch connection.");
         logger.error(e);
         await elastic.close();
     } catch {
@@ -79,10 +78,10 @@ graceful.errorShutdown(async (e) => {
     }
 });
 
+// Enable graceful shutdown on signals.
 graceful.signalShutdown(async (signal) => {
-    logger.info("Closing enasticsearch connection.");
-
     try {
+        logger.info("Closing enasticsearch connection.");
         await elastic.close();
     } catch {
         process.kill(process.pid, signal);

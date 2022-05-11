@@ -1,6 +1,7 @@
 "use strict";
 
 const { logger: log } = require("../../utils");
+const { ElasticsearchClientError } = require("@elastic/transport/lib/errors");
 
 /**
  * Return event handler for emitted "error" events.
@@ -14,5 +15,10 @@ module.exports = function () {
 
     return (err) => {
         logger.error("There was an error:", err);
+
+        // If the error is instance of the ElasticsearchClientError we propogate the error to kill the running node process.
+        if (err instanceof ElasticsearchClientError) {
+            throw err;
+        }
     };
 };
