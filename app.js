@@ -2,7 +2,7 @@
 
 const config = require("./config.js");
 
-const { createProducer, createConsumer } = require("./services/kafka");
+const { createProducer, createConsumer, disconnectConsumer, disconnectProducer } = require("./services/kafka");
 const EventEmitter = require("events");
 const { Client } = require('@elastic/elasticsearch');
 const { logger: log, validator, graceful } = require("./utils");
@@ -47,43 +47,38 @@ async function run() {
     });
 
     /**
-     * Graceful shutdown handler for producer and consumer.
+     * Graceful shutdown handler for producer, consumer and elastic client.
      */
-    function shutdown() {
-        consumer.disconnect(() => {
-            logger.info("Consumer disconnected.");
-            producer.disconnect(10000, () => {
+    function shutdown(catcherCallback) {
+        return async (sigerr) => {
+            try {
+                await disconnectConsumer(consumer);
+                logger.info("Consumer disconnected.");
+
+                await disconnectProducer(producer);
                 logger.info("Producer disconnected.");
-                process.exit(0);
-            });
-        });
+
+                await elastic.close();
+                logger.info("Elasticsearch connection closed.");
+            } catch {
+                catcherCallback(sigerr);
+            }
+        }
     }
 
-    graceful.errorShutdown(shutdown);
-    graceful.signalShutdown(shutdown);
+    graceful.errorShutdown(
+        shutdown(() => {
+            process.exit(1)
+        })
+    );
+
+    graceful.signalShutdown(
+        shutdown((signal) => {
+            process.kill(process.pid, signal)
+        })
+    );
 }
 
 run().catch((e) => {
-    console.error(`[action-tracker-app/consumer] ${e.message}`, e);
-});
-
-// Enable graceful shutdown on errors.
-graceful.errorShutdown(async (e) => {
-    try {
-        logger.info("Closing enasticsearch connection.");
-        logger.error(e);
-        await elastic.close();
-    } catch {
-        process.exit(1);
-    }
-});
-
-// Enable graceful shutdown on signals.
-graceful.signalShutdown(async (signal) => {
-    try {
-        logger.info("Closing enasticsearch connection.");
-        await elastic.close();
-    } catch {
-        process.kill(process.pid, signal);
-    }
+    logger.error(`[action-tracker-app/consumer] ${e.message}`, e);
 });

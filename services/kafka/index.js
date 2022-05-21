@@ -60,6 +60,25 @@ function createProducer(config, onDeliveryReport = null) {
 }
 
 /**
+ * Disconnect producer.
+ *
+ * @param {Producer} producer Producer instance.
+ *
+ * @returns {Promise<Boolean>} True in case of success.
+ */
+function disconnectProducer(producer) {
+    return new Promise((resolve, reject) => {
+        producer.disconnect(10000, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
+
+/**
  * Create consumer instance with given configurations.
  *
  * @param {Object} config Consumer configurations object.
@@ -90,7 +109,28 @@ function createConsumer(config) {
     });
 };
 
+/**
+ * Disconnect consumer.
+ *
+ * @param {KafkaConsumer} consumer Consumer instance.
+ *
+ * @returns {Promise<Boolean>} True in case of success.
+ */
+ function disconnectConsumer(consumer) {
+    return new Promise((resolve, reject) => {
+        consumer.disconnect((err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
+
 module.exports = {
     createProducer,
+    disconnectProducer,
     createConsumer,
+    disconnectConsumer,
 };
