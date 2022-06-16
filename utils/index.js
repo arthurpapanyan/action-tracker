@@ -48,8 +48,6 @@ const consumedRecordSchema = Joi.array().items(
     Joi.object({
         index: Joi.string().valid("activity", "products").required(),
 
-        action: Joi.string().valid("create", "update", "delete").required(),
-
         params: Joi.alternatives().try(Joi.object(), Joi.array()).allow(null).required(),
 
         document: Joi.object().allow(null).required(),
